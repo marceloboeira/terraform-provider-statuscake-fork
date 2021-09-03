@@ -2,7 +2,7 @@
     <img src="https://cdn.rawgit.com/hashicorp/terraform-website/master/content/source/assets/images/logo-hashicorp.svg" alt="Terraform logo" title="Terraform" align="right" height="50" />
 </a>
 
-# StatusCake Terraform Provider
+# StatusCake Terraform Provider ![test](https://github.com/StatusCakeDev/terraform-provider-statuscake/workflows/test/badge.svg)
 
 [![Support][support-badge]][support]
 
