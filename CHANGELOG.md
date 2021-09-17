@@ -1,3 +1,9 @@
+## 2.0.0 (Fork)
+
+NOTES:
+
+* Merge contact group PR
+
 ## 1.1.0 (Unreleased)
 ## 1.0.0 (July 02, 2019)
 
