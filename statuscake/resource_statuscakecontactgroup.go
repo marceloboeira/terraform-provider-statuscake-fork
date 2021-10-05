@@ -3,10 +3,10 @@ package statuscake
 import (
 	"fmt"
 
-	"github.com/DreamItGetIT/statuscake"
+	"context"
+
+	scapi "github.com/StatusCakeDev/statuscake-go"
 	"github.com/hashicorp/terraform/helper/schema"
-	"log"
-	"strconv"
 )
 
 func resourceStatusCakeContactGroup() *schema.Resource {
@@ -20,35 +20,25 @@ func resourceStatusCakeContactGroup() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"contact_id": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
-			"desktop_alert": {
+			"name": {
 				Type:     schema.TypeString,
-				Optional: true,
+				Required: true,
 			},
 			"ping_url": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"group_name": {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			"pushover": {
-				Type:     schema.TypeString,
+			"mobile_numbers": {
+				Type:     schema.TypeSet,
+				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
 			},
-			"boxcar": {
-				Type:     schema.TypeString,
+			"email_addresses": {
+				Type:     schema.TypeSet,
+				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
 			},
-			"mobiles": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"emails": {
+			"integration_ids": {
 				Type:     schema.TypeSet,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
@@ -58,81 +48,60 @@ func resourceStatusCakeContactGroup() *schema.Resource {
 }
 
 func CreateContactGroup(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*statuscake.Client)
+	client := meta.(*scapi.APIClient)
 
-	newContactGroup := &statuscake.ContactGroup{
-		GroupName:    d.Get("group_name").(string),
-		Emails:       castSetToSliceStrings(d.Get("emails").(*schema.Set).List()),
-		Mobiles:      d.Get("mobiles").(string),
-		Boxcar:       d.Get("boxcar").(string),
-		Pushover:     d.Get("pushover").(string),
-		DesktopAlert: d.Get("desktop_alert").(string),
-		PingURL:      d.Get("ping_url").(string),
-	}
+	res, err := client.CreateContactGroup(context.Background()).
+		Name(d.Get("name").(string)).
+		PingURL(d.Get("ping_url").(string)).
+		MobileNumbers(castSetToSliceStrings(d.Get("mobile_numbers").(*schema.Set).List())).
+		EmailAddresses(castSetToSliceStrings(d.Get("email_addresses").(*schema.Set).List())).
+		Integrations(castSetToSliceStrings(d.Get("integration_ids").(*schema.Set).List())).
+		Execute()
 
-	log.Printf("[DEBUG] Creating new StatusCake Contact group: %s", d.Get("group_name").(string))
-
-	response, err := statuscake.NewContactGroups(client).Create(newContactGroup)
 	if err != nil {
 		return fmt.Errorf("Error creating StatusCake ContactGroup: %s", err.Error())
 	}
 
-	d.Set("mobiles", newContactGroup.Mobiles)
-	d.Set("boxcar", newContactGroup.Boxcar)
-	d.Set("pushover", newContactGroup.Pushover)
-	d.Set("desktop_alert", newContactGroup.DesktopAlert)
-	d.Set("contact_id", newContactGroup.ContactID)
-	d.SetId(strconv.Itoa(response.ContactID))
+	d.SetId(res.Data.NewID)
 
 	return ReadContactGroup(d, meta)
 }
 
 func UpdateContactGroup(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*statuscake.Client)
-
-	params := &statuscake.ContactGroup{
-		GroupName:    d.Get("group_name").(string),
-		Emails:       castSetToSliceStrings(d.Get("emails").(*schema.Set).List()),
-		Mobiles:      d.Get("mobiles").(string),
-		ContactID:    d.Get("contact_id").(int),
-		Boxcar:       d.Get("boxcar").(string),
-		Pushover:     d.Get("pushover").(string),
-		DesktopAlert: d.Get("desktop_alert").(string),
-		PingURL:      d.Get("ping_url").(string),
-	}
-	log.Printf("[DEBUG] StatusCake ContactGroup Update for %s", d.Id())
-	_, err := statuscake.NewContactGroups(client).Update(params)
-	d.Set("mobiles", params.Mobiles)
-	d.Set("boxcar", params.Boxcar)
-	d.Set("pushover", params.Pushover)
-	d.Set("desktop_alert", params.DesktopAlert)
-	if err != nil {
-		return fmt.Errorf("Error Updating StatusCake ContactGroup: %s", err.Error())
-	}
-	return ReadContactGroup(d, meta)
+	return nil
 }
 
 func DeleteContactGroup(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*statuscake.Client)
-	id, _ := strconv.Atoi(d.Id())
-	log.Printf("[DEBUG] Deleting StatusCake ContactGroup: %s", d.Id())
-	err := statuscake.NewContactGroups(client).Delete(id)
+	// client := meta.(*scapi.Client)
+	// id, _ := strconv.Atoi(d.Id())
+	// log.Printf("[DEBUG] Deleting StatusCake ContactGroup: %s", d.Id())
+	// err := scapi.NewContactGroups(client).Delete(id)
 
-	return err
+	// return err
+	return nil
 }
 
 func ReadContactGroup(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*statuscake.Client)
-	id, _ := strconv.Atoi(d.Id())
-	response, err := statuscake.NewContactGroups(client).Detail(id)
+	client := meta.(*scapi.APIClient)
+
+	res, err := client.GetContactGroup(context.Background(), d.Id()).Execute()
 	if err != nil {
 		return fmt.Errorf("Error Getting StatusCake ContactGroup Details for %s: Error: %s", d.Id(), err)
 	}
-	d.Set("group_name", response.GroupName)
-	d.Set("emails", response.Emails)
-	d.Set("contact_id", response.ContactID)
-	d.Set("ping_url", response.PingURL)
-	d.SetId(strconv.Itoa(response.ContactID))
+
+	d.Set("name", res.Data.Name)
+	d.Set("mobile_numbers", orEmptySlice(res.Data.MobileNumbers))
+	d.Set("email_addresses", orEmptySlice(res.Data.EmailAddresses))
+	d.Set("integration_ids", orEmptySlice(res.Data.Integrations))
+	d.Set("ping_url", res.Data.PingURL)
 
 	return nil
+}
+
+func orEmptySlice(a []string) []string {
+	if a == nil || len(a) == 0 {
+		return []string{}
+	}
+
+	return a
 }

@@ -1,7 +1,8 @@
 package statuscake
 
 import (
-	"github.com/DreamItGetIT/statuscake"
+	scapi "github.com/StatusCakeDev/statuscake-go"
+
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 )
@@ -9,12 +10,6 @@ import (
 func Provider() terraform.ResourceProvider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
-			"username": {
-				Type:        schema.TypeString,
-				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("STATUSCAKE_USERNAME", nil),
-				Description: "Username for StatusCake Account.",
-			},
 			"apikey": {
 				Type:        schema.TypeString,
 				Required:    true,
@@ -24,7 +19,6 @@ func Provider() terraform.ResourceProvider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"statuscake_test":          resourceStatusCakeTest(),
 			"statuscake_contact_group": resourceStatusCakeContactGroup(),
 		},
 
@@ -33,9 +27,7 @@ func Provider() terraform.ResourceProvider {
 }
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	auth := statuscake.Auth{
-		Username: d.Get("username").(string),
-		Apikey:   d.Get("apikey").(string),
-	}
-	return statuscake.New(auth)
+	client := scapi.NewAPIClient(d.Get("apikey").(string))
+
+	return client, nil
 }
