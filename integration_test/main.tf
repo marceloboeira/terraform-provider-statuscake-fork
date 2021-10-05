@@ -18,6 +18,18 @@ provider "statuscake" {
 }
 
 resource "statuscake_contact_group" "test1" {
-  name  = "SeatGeek"
+  name  = "SeatGeek 99"
   ping_url     = "http://marceloboeira.com"
+
+  mobile_numbers = [
+    "999999999999999",
+  ]
+  email_addresses = [
+    "me@marceloboeira.com",
+    "foo@bar.com",
+    "3@foo.com",
+  ]
+  integration_ids = [
+    "43432",
+  ]
 }
